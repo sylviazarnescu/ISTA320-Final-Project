@@ -1,0 +1,119 @@
+---
+title: "ISTA 320 Final Project"
+author: "Sylvia Zarnescu"
+date: "Spring 2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(knitr)
+opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(RColorBrewer)
+library(ggthemes)
+```
+
+all datasets is from : https://www.kaggle.com/datasets/budnyak/wine-rating-and-price
+
+# Part 1 - What are the most popular types of wine from each country?
+
+> Question 1) Between our four categories, which type of wine is most commonly produed and rated a 4 or above by each country? 
+
+Here, I combined each individual dataframe and filtered it to keep only the wines rated a 4 or above. Then, I created a bar plot with x mapped to type and fill mapped to country to display the distributions of these four types of wine according to how frequently they were produced, and by which countries. In showing this distribution of most produced and highest rated wines, we can see that reds are by far the most popular around the world—specifically, reds from France and Italy.
+
+
+```{r}
+#load the data
+dir("data")
+red = read.csv(file = 'data/Red.csv')
+white = read.csv(file = 'data/White.csv')
+sparkling = read.csv(file = 'data/Sparkling.csv')
+rose = read.csv(file = 'data/Rose.csv')
+
+red <- red %>%
+  mutate(type = "Red")
+
+white <- white %>%
+  mutate(type = "White")
+
+sparkling <- sparkling %>%
+  mutate(type = "Sparkling")
+
+rose <- rose %>%
+  mutate(type = "Rose")
+
+#create a new dataframe
+wine_data <- bind_rows(red, white, sparkling, rose)
+glimpse(wine_data)
+
+#create a separate data frame to filter for this question
+q1_data = wine_data
+q1_data<- filter(q1_data, Rating >= "4")
+
+#plot
+q1_data %>%
+  ggplot(aes(x = type, fill = Country)) +
+  geom_bar() +
+  ggtitle("Most Common Type of Highly Rated Wine Produced by Country")
+
+```
+
+
+
+# Part 2 - Is there a relationship between price and rating?
+
+> Question 2) Are more highly rated wines also more expensive?
+
+To answer this question, I took the datatset I had previously mutated and looked at the correlatiopn between price and rating. It turns out, there is a fairly large correlation between these two variables. To plot this, I created a scatter plot with x mapped to rating and y mapped to price, with an added regression line to show this relationship. As we can see, there is a clear positive trend after ratings reach 4 with an increase in price.
+
+
+```{r}
+dir("data")
+q2_data = wine_data
+
+cor(wine_data$Price,wine_data$Rating)
+
+q2_data %>%
+  ggplot(aes(x = Rating, y=Price)) +
+  geom_point() +
+  ylim(0,1500) +
+  geom_smooth() +
+  ggtitle("Wine Ratings vs Price per Bottle")
+```
+
+# Part 3 - What is the average price of a bottle of wine in each country?
+
+> Question 3) Does the price of a bottle of wine change depending on which country it's from?
+
+Finally, I took the same dataframe from before and created a new datatframe containing the calculated mean price for a bottle of wine in each country. I then loaded in the world map data and joined it to the dataframe with the mean price information. Next, I plotted the price on the world map with a color scale displaying how each country compares to the others. This shows that wine from France, Lebanon, and Australia are the most expensive. 
+
+
+```{r}
+dir("data")
+q3_data = wine_data
+
+mean_price<- q3_data %>%
+  group_by(Country) %>%
+  summarize(mean_price = mean(Price))
+
+world <- map_data("world")
+
+mean_price %>%
+  filter(!(Country %in% unique(world$region))) %>%
+  pull(Country)
+
+wine_world <- world %>%
+ left_join(mean_price,
+            by = c("region" = "Country"))
+
+wine_world %>%
+  ggplot(aes(x = long, y = lat, fill = mean_price, map_id = region)) + 
+  geom_map(map = world) +
+  theme_linedraw() +
+  theme(legend.position = "bottom") +
+  ggtitle("Global Average Wine Prices") +
+  scale_fill_continuous(name = "Average price per bottle of wine",
+                        low = "cornsilk", 
+                        high = "salmon4") 
+
+```
